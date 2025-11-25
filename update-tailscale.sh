@@ -8,6 +8,8 @@ SCRIPT_VERSION="2025.13.11.01"
 SCRIPT_NAME="update-tailscale.sh"
 UPDATE_URL="https://get.admon.me/tailscale-update"
 TAILSCALE_TINY_URL="https://github.com/Admonstrator/glinet-tailscale-updater/releases/latest/download/"
+# Holds the archive filename for the full tailscale package
+TAILSCALE_ARCHIVE_NAME=""
 #
 # Variables
 IGNORE_FREE_SPACE=0
@@ -249,7 +251,7 @@ get_latest_tailscale_version_tiny() {
         log "ERROR" "Could not get latest tailscale version. Please check your internet connection."
         exit 1
     fi
-    TAILSCALE_VERSION_OLD="$(tailscale --version | head -1)"
+    TAILSCALE_VERSION_OLD="$(tailscale --version 2>/dev/null | head -1 | awk '{print $NF}')"
     if [ "$TAILSCALE_VERSION_NEW" = "$TAILSCALE_VERSION_OLD" ] && [ "$FORCE_UPGRADE" -eq 0 ]; then
         log "SUCCESS" "You already on the latest version: $TAILSCALE_VERSION_OLD"
         log "INFO" "You can force reinstall with the --force-upgrade flag."
@@ -283,28 +285,33 @@ get_latest_tailscale_version() {
     else
         log "INFO" "Detecting latest tailscale version"
         if [ "$ARCH" = "aarch64" ]; then
-            TAILSCALE_VERSION_NEW=$(wget -qO- https://pkgs.tailscale.com/stable/ | grep -o 'tailscale_[0-9]*\.[0-9]*\.[0-9]*_arm64\.tgz' | head -n 1)
+            TAILSCALE_ARCHIVE_NAME=$(wget -qO- https://pkgs.tailscale.com/stable/ | grep -o 'tailscale_[0-9]*\.[0-9]*\.[0-9]*_arm64\.tgz' | head -n 1)
         elif [ "$ARCH" = "armv7l" ]; then
-            TAILSCALE_VERSION_NEW=$(wget -qO- https://pkgs.tailscale.com/stable/ | grep -o 'tailscale_[0-9]*\.[0-9]*\.[0-9]*_arm\.tgz' | head -n 1)
+            TAILSCALE_ARCHIVE_NAME=$(wget -qO- https://pkgs.tailscale.com/stable/ | grep -o 'tailscale_[0-9]*\.[0-9]*\.[0-9]*_arm\.tgz' | head -n 1)
         elif [ "$ARCH" = "x86_64" ]; then
-            TAILSCALE_VERSION_NEW=$(wget -qO- https://pkgs.tailscale.com/stable/ | grep -o 'tailscale_[0-9]*\.[0-9]*\.[0-9]*_amd64\.tgz' | head -n 1)
+            TAILSCALE_ARCHIVE_NAME=$(wget -qO- https://pkgs.tailscale.com/stable/ | grep -o 'tailscale_[0-9]*\.[0-9]*\.[0-9]*_amd64\.tgz' | head -n 1)
         elif [ "$ARCH" = "mips" ]; then
-            TAILSCALE_VERSION_NEW=$(wget -qO- https://pkgs.tailscale.com/stable/ | grep -o 'tailscale_[0-9]*\.[0-9]*\.[0-9]*_mips\.tgz' | head -n 1)
+            TAILSCALE_ARCHIVE_NAME=$(wget -qO- https://pkgs.tailscale.com/stable/ | grep -o 'tailscale_[0-9]*\.[0-9]*\.[0-9]*_mips\.tgz' | head -n 1)
         fi
-        if [ -z "$TAILSCALE_VERSION_NEW" ]; then
+        if [ -z "$TAILSCALE_ARCHIVE_NAME" ]; then
             log "ERROR" "Could not get latest tailscale version. Please check your internet connection."
             exit 1
         fi
-        TAILSCALE_VERSION_OLD="$(tailscale --version | head -1)"
-        if [ "$TAILSCALE_VERSION_NEW" = "$TAILSCALE_VERSION_OLD" ] && [ "$FORCE_UPGRADE" -eq 0 ]; then
+        TAILSCALE_VERSION_NEW=$(printf "%s" "$TAILSCALE_ARCHIVE_NAME" | sed -n 's/^tailscale_\([0-9.]*\)_.*\.tgz$/\1/p')
+        if [ -z "$TAILSCALE_VERSION_NEW" ]; then
+            log "WARNING" "Could not parse version from archive name: $TAILSCALE_ARCHIVE_NAME"
+            TAILSCALE_VERSION_NEW="$TAILSCALE_ARCHIVE_NAME"
+        fi
+        TAILSCALE_VERSION_OLD="$(tailscale --version 2>/dev/null | head -1 | awk '{print $NF}')"
+        if [ -n "$TAILSCALE_VERSION_OLD" ] && [ "$TAILSCALE_VERSION_NEW" = "$TAILSCALE_VERSION_OLD" ] && [ "$FORCE_UPGRADE" -eq 0 ]; then
             log "SUCCESS" "You already have the latest version."
             exit 0
-        elif [ "$TAILSCALE_VERSION_NEW" = "$TAILSCALE_VERSION_OLD" ] && [ "$FORCE_UPGRADE" -eq 1 ]; then
+        elif [ -n "$TAILSCALE_VERSION_OLD" ] && [ "$TAILSCALE_VERSION_NEW" = "$TAILSCALE_VERSION_OLD" ] && [ "$FORCE_UPGRADE" -eq 1 ]; then
             log "WARNING" "--force-upgrade flag is used. Continuing with reinstallation"
         fi
         log "INFO" "The latest tailscale version is: $TAILSCALE_VERSION_NEW"
         log "INFO" "Downloading latest tailscale version"
-        wget -q -O /tmp/tailscale.tar.gz "https://pkgs.tailscale.com/stable/$TAILSCALE_VERSION_NEW"
+        wget -q -O /tmp/tailscale.tar.gz "https://pkgs.tailscale.com/stable/$TAILSCALE_ARCHIVE_NAME"
         # Check if download was successful
     fi
     if [ ! -f "/tmp/tailscale.tar.gz" ]; then
