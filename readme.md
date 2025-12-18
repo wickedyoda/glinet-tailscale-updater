@@ -64,7 +64,7 @@ wget -q https://get.admon.me/tailscale -O update-tailscale.sh ; sh update-tailsc
 
 ### Buildroot wrapper
 
-For Buildroot-based systems (tested profile: `PRETTY_NAME="Buildroot 2018.02-rc3"`), a wrapper script is included to launch the updater:
+For Buildroot-based systems, use the wrapper script. It will download the main updater automatically and then run it:
 
 ```bash
 wget -q https://raw.githubusercontent.com/Admonstrator/glinet-tailscale-updater/main/update-tailscale-buildroot.sh -O update-tailscale-buildroot.sh
