@@ -67,7 +67,7 @@ wget -q https://get.admon.me/tailscale -O update-tailscale.sh ; sh update-tailsc
 For Buildroot-based systems, use the wrapper script. It will download the main updater automatically and then run it:
 
 ```bash
-wget -q https://raw.githubusercontent.com/Admonstrator/glinet-tailscale-updater/main/update-tailscale-buildroot.sh -O update-tailscale-buildroot.sh
+wget -q https://raw.githubusercontent.com/wickedyoda/glinet-tailscale-updater/refs/heads/main/update-tailscale-buildroot.sh -O update-tailscale-buildroot.sh
 sh update-tailscale-buildroot.sh
 ```
 
