@@ -3,8 +3,8 @@
 # Wrapper to run the GL.iNet/OpenWrt tailscale updater on Buildroot systems.
 
 SCRIPT_DIR=$(CDPATH= cd -- "$(dirname "$0")" && pwd)
-MAIN_SCRIPT="$SCRIPT_DIR/update-tailscale.sh"
-MAIN_URL="https://raw.githubusercontent.com/wickedyoda/glinet-tailscale-updater/refs/heads/main/update-tailscale.sh"
+MAIN_SCRIPT="$SCRIPT_DIR/update-tailscale-buildroot.sh"
+MAIN_URL="https://raw.githubusercontent.com/wickedyoda/glinet-tailscale-updater/refs/heads/main/update-tailscale-buildroot.sh"
 
 if [ -f /etc/os-release ]; then
     # shellcheck disable=SC1091
@@ -30,16 +30,16 @@ if [ ! -f "$MAIN_SCRIPT" ]; then
 
     if command -v wget >/dev/null 2>&1; then
         if ! wget -q -O "$MAIN_SCRIPT" "$MAIN_URL"; then
-            echo "[!] Failed to download update-tailscale.sh via wget" >&2
+            echo "[!] Failed to download update-tailscale-buildroot.sh via wget" >&2
             exit 1
         fi
     elif command -v curl >/dev/null 2>&1; then
         if ! curl -fsSL -o "$MAIN_SCRIPT" "$MAIN_URL"; then
-            echo "[!] Failed to download update-tailscale.sh via curl" >&2
+            echo "[!] Failed to download update-tailscale-buildroot.sh via curl" >&2
             exit 1
         fi
     else
-        echo "[!] Neither wget nor curl is available to download update-tailscale.sh" >&2
+        echo "[!] Neither wget nor curl is available to download update-tailscale-buildroot.sh" >&2
         exit 1
     fi
 
