@@ -1,5 +1,8 @@
 <div align="center">
 
+### Note that buildroot script still has some issues; on a few system it will log you out Tailscale. Requiring you to login and add the device back. I am working on it currently. 
+
+
 <img src="images/robbenlogo-glinet-small.webp" width="300" alt="GL.iNet Tailscale Logo" style="border-radius: 10px; margin: 20px 0;">
 
 ## Tailscale Updater for GL.iNet Routers
