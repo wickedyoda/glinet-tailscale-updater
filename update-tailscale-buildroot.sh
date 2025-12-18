@@ -3,7 +3,7 @@
 # Description: Tailscale updater tailored for Buildroot-based systems (e.g., Comet/Comet Pro).
 # Source repo: https://github.com/wickedyoda/glinet-tailscale-updater
 
-SCRIPT_VERSION="2025.13.11.01"
+SCRIPT_VERSION="2025.13.11.05"
 SCRIPT_NAME="update-tailscale-buildroot.sh"
 UPDATE_URL="https://raw.githubusercontent.com/wickedyoda/glinet-tailscale-updater/refs/heads/main/update-tailscale-buildroot.sh"
 
@@ -163,16 +163,26 @@ download_release() {
 
 extract_release() {
     workdir="/tmp/tailscale"
+    rm -f /tmp/tailscale-tar.log
     rm -rf "$workdir"
     mkdir -p "$workdir"
     log INFO "Extracting archive"
-    tar xzf /tmp/tailscale.tar.gz -C "$workdir"
-    TAILSCALE_SUBDIR=$(tar tzf /tmp/tailscale.tar.gz | grep '/$' | head -n1 | tr -d '/')
+    if ! tar xzf /tmp/tailscale.tar.gz -C "$workdir" 2>/tmp/tailscale-tar.log; then
+        # BusyBox tar may not support -z; fall back to gzip + tar
+        log WARNING "tar -z unsupported; retrying with gzip pipeline"
+        rm -rf "$workdir"
+        mkdir -p "$workdir"
+        if ! gzip -dc /tmp/tailscale.tar.gz | tar xf - -C "$workdir"; then
+            log ERROR "Extraction failed (see /tmp/tailscale-tar.log for tar output)"
+            exit 1
+        fi
+    fi
+    TAILSCALE_SUBDIR=$(find "$workdir" -mindepth 1 -maxdepth 1 -type d | head -n1)
     if [ -z "$TAILSCALE_SUBDIR" ]; then
         log ERROR "Failed to locate extracted directory"
         exit 1
     fi
-    BIN_DIR="$workdir/$TAILSCALE_SUBDIR"
+    BIN_DIR="$TAILSCALE_SUBDIR"
     if [ ! -x "$BIN_DIR/tailscale" ] || [ ! -x "$BIN_DIR/tailscaled" ]; then
         log ERROR "tailscale binaries not found after extraction"
         exit 1
@@ -193,16 +203,67 @@ stop_tailscale() {
     killall tailscaled 2>/dev/null || true
 }
 
+tailscaled_running() {
+    pidof tailscaled >/dev/null 2>&1 && return 0
+    ps 2>/dev/null | grep '[t]ailscaled' >/dev/null 2>&1
+}
+
+pick_state_path() {
+    for path in \
+        /var/lib/tailscale/tailscaled.state \
+        /etc/tailscale/tailscaled.state \
+        /var/cache/tailscale/tailscaled.state; do
+        if [ -f "$path" ]; then
+            STATE_PATH="$path"
+            return
+        fi
+    done
+    STATE_PATH="/var/lib/tailscale/tailscaled.state"
+}
+
+ensure_state_path() {
+    DEFAULT_STATE="/var/lib/tailscale/tailscaled.state"
+    pick_state_path
+    mkdir -p "$(dirname "$STATE_PATH")" "$(dirname "$DEFAULT_STATE")"
+    if [ "$STATE_PATH" != "$DEFAULT_STATE" ] && [ -f "$STATE_PATH" ] && [ ! -e "$DEFAULT_STATE" ]; then
+        ln -sf "$STATE_PATH" "$DEFAULT_STATE"
+    fi
+}
+
+start_tailscaled_direct() {
+    ensure_state_path
+    state_dir=$(dirname "$STATE_PATH")
+    mkdir -p /var/run/tailscale /var/cache/tailscale /etc/tailscale "$state_dir"
+    log INFO "Starting tailscaled directly (state: $STATE_PATH)"
+    tailscaled --state="$STATE_PATH" --socket=/var/run/tailscale/tailscaled.sock --port=41641 >/tmp/tailscaled.log 2>&1 &
+    sleep 1
+}
+
 start_tailscale() {
     log INFO "Starting tailscaled (best effort)"
+    ensure_state_path
+    started=0
     if command -v systemctl >/dev/null 2>&1; then
-        systemctl start tailscaled 2>/dev/null || true
+        systemctl start tailscaled 2>/dev/null && started=1 || true
     fi
     if [ -x /etc/init.d/tailscale ]; then
-        /etc/init.d/tailscale start 2>/dev/null || true
+        /etc/init.d/tailscale start 2>/dev/null && started=1 || true
     fi
     if [ -x /etc/init.d/tailscaled ]; then
-        /etc/init.d/tailscaled start 2>/dev/null || true
+        /etc/init.d/tailscaled start 2>/dev/null && started=1 || true
+    fi
+    if [ "$started" -eq 0 ]; then
+        log WARNING "No service manager detected; starting tailscaled directly"
+        start_tailscaled_direct
+    fi
+    if [ "$started" -eq 1 ] && ! tailscaled_running; then
+        log WARNING "tailscaled not running after service start; trying direct start"
+        start_tailscaled_direct
+    fi
+    if tailscaled_running; then
+        log SUCCESS "tailscaled is running"
+    else
+        log ERROR "Failed to start tailscaled. Check /tmp/tailscaled.log if present."
     fi
 }
 
