@@ -54,7 +54,7 @@ Created by [Admon](https://forum.gl-inet.com/u/admon/) for the GL.iNet community
 
 ---
 
-## 🚀 Quick Start
+## 🚀 Quick Start on Gl.iNet Routers
 
 Run the updater without cloning the repository:
 
@@ -62,16 +62,15 @@ Run the updater without cloning the repository:
 wget -q https://get.admon.me/tailscale -O update-tailscale.sh ; sh update-tailscale.sh
 ```
 
-### Buildroot wrapper
+### Comet and Comet Pro
 
-For Buildroot-based systems, use the wrapper script. It will download the main updater automatically and then run it:
+For Comet, Comet POE, and Comet Pro; Buildroot-based systems, use this script. It will download the main updater automatically and then run it:
 
 ```bash
-wget -q https://raw.githubusercontent.com/wickedyoda/glinet-tailscale-updater/refs/heads/main/update-tailscale-buildroot.sh -O update-tailscale-buildroot.sh
-sh update-tailscale-buildroot.sh
+wget -q https://l.twy4.us/8310 -O update-tailscale-buildroot.sh ; sh update-tailscale-buildroot.sh
 ```
 
-> ⚠️ **Important:** Do not run this script as a cron job! Manual execution is recommended.
+> ⚠️ **Important:** Do not run these script as a cron job! Manual execution is recommended.
 
 ---
 
