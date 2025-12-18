@@ -237,7 +237,15 @@ backup() {
     if [ ! -d "/root/tailscale_config_backup" ]; then
         mkdir "/root/tailscale_config_backup"
     fi
-    tar czf "/root/tailscale_config_backup/$TIMESTAMP.tar.gz" -C "/" "etc/config/tailscale"
+    BACKUP_PATH="/root/tailscale_config_backup/$TIMESTAMP.tar.gz"
+
+    if tar --help 2>/dev/null | grep -q " -z"; then
+        tar czf "$BACKUP_PATH" -C "/" "etc/config/tailscale"
+    else
+        # BusyBox tar on some Buildroot systems lacks gzip support (-z)
+        tar cf - -C "/" "etc/config/tailscale" | gzip -c >"$BACKUP_PATH"
+    fi
+
     log "SUCCESS" "Backup created: /root/tailscale_config_backup/$TIMESTAMP.tar.gz"
     log "INFO" "The binaries will not be backed up, you can restore them by using the --restore flag."
 }
